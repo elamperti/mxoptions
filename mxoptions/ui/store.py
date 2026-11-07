@@ -30,7 +30,6 @@ class Store(QObject):
         self.cfg = cfg
         self.engine = engine
         self.sounds = sounds  # WheelSounds, for the pages that let the user hear a click
-        self.flow = None      # flow_service.FlowService, once the program has made it
         self.state = {"connected": False, "known": False, "name": "", "uinput": True, "rivals": [], "battery": None,
                       "current_host": 0, "hosts": [], "dpi": cfg["pointer"]["dpi"], "wheel_mode": "", "caps": None}
         self._save_timer = QTimer(self, singleShot=True, interval=500)
@@ -111,8 +110,7 @@ class Store(QObject):
 
     def restore_defaults(self):
         cfg = copy.deepcopy(config.DEFAULTS)
-        for section in ("app", "flow"):  # the look of the program and its pairing with another computer stay
-            cfg[section] = copy.deepcopy(self.cfg[section])
+        cfg["app"] = copy.deepcopy(self.cfg["app"])  # the look of the program stays
         caps = self.state.get("caps") or {}
         if caps.get("dpi_default"):
             cfg["pointer"]["dpi"] = caps["dpi_default"]

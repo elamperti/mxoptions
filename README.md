@@ -40,9 +40,6 @@ service and a D-Bus API for other programs.
   optional click, felt or heard, marks SmartShift letting the wheel go and catching it again.
 - **Haptics.** Strength, the built-in patterns, and how hard the thumb panel has to be pressed.
   Rumble from games can be played on the mouse: see [Rumble from games](#rumble-from-games).
-- **Flow.** One mouse on two or three computers: push the pointer past the edge of the screen and
-  the mouse carries on on the computer behind it, with the text, pictures and files you copied.
-  They are paired with a six-digit code and talk over an encrypted link. See [Flow](#flow).
 - **Also:** Easy-Switch between computers, a tray icon in five styles (plain ones in the colour of
   your panel that show a missing mouse and a low battery, one that fills with the charge), firmware
   versions with an update check through fwupd, four themes with any accent colour.
@@ -60,14 +57,14 @@ MX Masters before the 4 (3S, 3, 2S and the first) are drawn with the 3D model, a
 with a plain drawing of its own buttons. None of these was tried by the author; a user reported
 gestures working on a Signature M650 L.
 
-- Python 3.12 or newer (3.13 or newer for Flow)
+- Python 3.12 or newer
 - PySide6 (Qt 6.6 or newer), with Qt Declarative and Qt Multimedia
 - python-evdev
 - layer-shell-qt (its QML module draws the ring over other windows on Wayland; a small library, not a
   desktop: it is wanted on sway and Hyprland as much as on KDE Plasma)
 - numpy, optional: the glossy 3D model and soft shadows
-- for what was copied to cross with Flow, optional: KGuiAddons with its Python bindings (KDE
-  Frameworks 6), or wl-clipboard. On X11 neither is needed.
+- for the *Text* action, optional: xclip or xsel on X11, wl-clipboard on Wayland (Plasma needs neither).
+  Without one, text is typed key by key with a US layout.
 
 Use your distribution's PySide6. One installed with pip brings its own Qt, which cannot see the
 system's layer-shell module, so the Actions Ring would not appear.
@@ -84,19 +81,15 @@ each desktop allows:
 |---|---|---|---|---|
 | Ready actions for windows and the desktop | KDE's own shortcuts: all of them | `swaymsg`, `hyprctl`; a launcher, screenshots and a terminal from what is installed (fuzzel, wofi, rofi; grim and slurp) | GNOME's key combinations as it ships them | the usual key combinations (Alt+F4, Ctrl+Alt+arrows, Print, …) |
 | Actions Ring | on a layer above the windows | the same | in a window on the session's X server (XWayland), which takes no focus; a little soft where the display is scaled by a fraction | in a window the window manager leaves alone; as a panel of the ring's size where nothing composites |
-| Flow: the screen edge | a KWin script | a see-through line one pixel wide along the edge | not possible: use the *Move to the other computer (Flow)* action | the pointer's position is asked for |
-| Flow: what was copied | KGuiAddons, else wl-clipboard | the same | wl-clipboard | Qt itself |
 
 An action a desktop has no way of doing is not offered there, and settings made on KDE keep working:
 *Overview* stays *Overview*, done as the desktop at hand does it. The key combinations are the
 ones a desktop comes with; one you have rebound will not do its job, and then a keyboard shortcut of
 your own in its place will.
 
-**What was actually run.** Only KDE Plasma 6 on Wayland is used day to day. The X11 ways (the ring's
-window, the pointer watching, full-screen detection, the clipboard) were run in a virtual X server
-with no window manager. The line along the edge was run on KWin, where it hears the pointer and
-passes clicks and scrolling on, and so was the ring through XWayland, which there comes up over
-everything, is picked from and leaves the focus where it was. Nothing at all was run on GNOME,
+**What was actually run.** Only KDE Plasma 6 on Wayland is used day to day. The X11 ring window was
+run in a virtual X server with no window manager. The ring through XWayland was run on KWin, where it
+comes up over everything, is picked from and leaves the focus where it was. Nothing at all was run on GNOME,
 sway, Hyprland or any X11 desktop itself: their commands and key combinations come from their
 documentation. Reports are welcome.
 
@@ -104,10 +97,8 @@ On GNOME the ring is drawn by a small second program (it has to talk to the X se
 main one, a Wayland program, cannot). Where the session keeps no X server the ring falls back to an
 ordinary window, which takes the focus while it is open.
 
-`MXOPTIONS_DESKTOP` (`kde`, `gnome`, `sway`, `hyprland`, `other`), `MXOPTIONS_RING` (`layer`, `x11`,
-`xwayland`, `window`), `MXOPTIONS_FLOW_EDGES` (`kwin`, `poll`, `strips`, `none`) and `MXOPTIONS_CLIPBOARD`
-(`ksystem`, `qt`, `wl-clipboard`, `klipper`, `none`) override what the program works out for
-itself, should it get one of them wrong.
+`MXOPTIONS_DESKTOP` (`kde`, `gnome`, `sway`, `hyprland`, `other`) and `MXOPTIONS_RING` (`layer`, `x11`,
+`xwayland`, `window`) override what the program works out for itself, should it get one of them wrong.
 
 ## Installing
 
@@ -189,75 +180,6 @@ buttons undo each other's settings.
 sudo systemctl disable --now logid
 ```
 
-## Flow
-
-Flow moves the mouse between computers when the pointer is pushed past the edge of the screen, the
-way Logitech's own Flow does, and takes along what you copied: text, pictures, files and folders.
-It is this project's own implementation: it works between computers running MX Options, not with
-Logi Options+. A computer can have another one on two of its sides, so three in a row share one
-mouse (it has three Easy-Switch channels).
-
-What it needs:
-
-- MX Options running on every one of them, on the same network;
-- the mouse paired with each, on an Easy-Switch channel of its own (Bolt receiver or Bluetooth);
-- a desktop that lets the pointer be watched at the screen edge: all but GNOME on Wayland do (see
-  [Desktops](#desktops)). There, and wherever you prefer it, a button, a gesture or a ring bubble
-  with the action *Move to the other computer (Flow)* takes the place of the edge;
-- for what you copied to cross: KGuiAddons with its Python bindings or wl-clipboard on Wayland,
-  nothing more on X11.
-
-Setting it up, on the *Flow* page:
-
-1. On one computer press *Show a code*. It shows six digits.
-2. On the other, open the same page. It finds the first computer by itself and asks for the code.
-3. On the picture, click where the other computer stands. The other one takes the facing side by
-   itself. For a third computer, repeat steps 1 and 2 with it and the one in the middle.
-4. Use the mouse on each computer once (switch with the Easy-Switch button), so that both learn
-   their channel. From then on, cross at the edge.
-
-What can be tuned there:
-
-- **Push past the edge:** how many millimetres the mouse has to keep moving once the pointer is at
-  the edge, measured on the mouse itself. At 0 a touch is enough.
-- **Keep the corners free:** the share of the edge, at each end, that does not lead across, so that
-  hot corners keep working.
-- **Full-screen windows:** by default a game or a film in full screen keeps the mouse.
-- **What goes along:** text and pictures, files and folders, and the largest amount to send in one
-  go. Files are sent when you cross and wait in `~/.cache/mxoptions/flow-files` for a day. The
-  clipboard of the computer you arrive on is left as it is until all of them are there; then they
-  take it over, and the mouse gives a vibration of your choice (another one if they could not be
-  brought over). The Flow page shows how far a transfer is and can cancel it.
-
-How it works, and how it is kept private:
-
-- **Pairing.** The six digits are never sent. The two computers run SRP-6a (RFC 5054, 3072-bit
-  group, SHA-256), a password-authenticated key exchange: somebody listening or sitting in between
-  gets nothing to try codes against, a wrong code costs one of three tries, and the code is good
-  for two minutes and one computer. Both sides end up with the same 120-bit key.
-- **The link.** Everything afterwards travels over TLS 1.2 with that key (ECDHE-PSK, so a recording
-  of the traffic stays unreadable even to someone who later learns the key).
-- **Finding each other.** Small UDP broadcasts on the local network: a computer showing a code says
-  so, and two paired computers that lost each other (an address changed) call out, signed with
-  their key. No address has to be typed.
-- **Ports.** TCP 47846 for the link (`flow.port` in the settings file), UDP 47846 for finding each
-  other, TCP 47847 only while a code is on show. Open them in the firewall for the other computer.
-- **Crossing.** The computer that has the mouse tells it to change channel over HID++, then tells
-  the other one where the pointer left and what is on the clipboard. The other computer puts its
-  pointer at the matching place of the facing edge.
-
-The mouse is only sent away when the link is up and the other computer has reported its channel, so
-it does not end up on a computer that is switched off. It is not sent while a button is held or
-when a touchpad or another mouse moved the pointer to the edge. If it ever does end up on the wrong
-channel, the Easy-Switch button on its underside brings it back.
-
-How long crossing takes is mostly the mouse changing its radio channel: about half a second to a
-computer with a Bolt receiver, one to two seconds to one on Bluetooth. Flow links computers that
-run MX Options; it does not talk to Logi Options+ on Windows or macOS.
-
-A keyboard does not follow unless it is switched by other means. For networks where the computers
-cannot find each other, the address and the key can be entered by hand at the bottom of the page.
-
 ## Rumble from games
 
 Games vibrate game controllers, not mice. With *Haptics → Game rumble* switched on, the app adds a
@@ -289,7 +211,6 @@ then, and for other mice, it draws its own 3D model.
 | Settings | `~/.config/mxoptions/config.json` |
 | Mouse pictures | `~/.local/share/mxoptions/mouse/` |
 | Generated click sounds | `~/.cache/mxoptions/sounds/` |
-| Files that arrived through Flow | `~/.cache/mxoptions/flow-files/` |
 | Tray icon drawings | `~/.local/share/icons/hicolor/scalable/status/mxoptions-tray-*.svg` |
 
 ## Known limits
@@ -306,16 +227,10 @@ then, and for other mice, it draws its own 3D model.
   system's firmware updater, for updates. fwupd can flash both the mouse and the Bolt receiver, but
   Logitech has published no firmware for either of them for Linux, so the check finds nothing. The
   app does not flash anything itself.
-- **Flow with three computers was never run on three.** It was written with two at hand: the
-  tests put three copies of the program on one machine and cross between them, but no third
-  computer has received the mouse.
 - **Game rumble was not tried in a game.** A test program playing rumble on the virtual gamepad
   makes the mouse vibrate on time; which games send rumble to it has not been explored.
 - **Run on one desktop.** KDE Plasma on Wayland is where the program is used. What it does on other
-  desktops is set out under [Desktops](#desktops), with what was and was not run there. On
-  compositors where a line along the edge watches for Flow, a drag that starts on that very line
-  of pixels (a scroll bar at the edge of the screen) does not start; a click and scrolling there
-  are passed on.
+  desktops is set out under [Desktops](#desktops), with what was and was not run there.
 - **Checked on one mouse.** Everything was tried on a single MX Master 4. Synthetic tests cover the
   logic; the feel of gestures, vibrations and sounds was judged by one person.
 - **The haptic panel does not answer while a main button is held.** With the left button down the
@@ -338,8 +253,7 @@ python3 tools/screenshots.py /tmp/shots    # render every page without a mouse o
 | `mxoptions/config.py` | the settings file: defaults, validation, migration, ring presets |
 | `mxoptions/api.py` | the D-Bus interface |
 | `mxoptions/rumble.py` | the virtual gamepad that games vibrate |
-| `mxoptions/flow.py`, `flow_pairing.py`, `flow_files.py` | Flow: the link between two computers, pairing by code, copied files |
-| `mxoptions/flow_service.py`, `clipboard.py` | Flow's ties to the mouse, the desktop and the clipboard |
+| `mxoptions/clipboard.py` | text on the clipboard, for the *Text* action |
 | `mxoptions/ui/` | the settings window, the ring overlay, sounds |
 | `data/` | desktop entry, systemd unit, udev rules |
 

@@ -149,7 +149,6 @@ click elsewhere or 20 seconds without movement.
 | `{"type": "command", "command": "firefox"}` | Shell command. |
 | `{"type": "script", "name": "VPN", "script": "..."}` | Multi-line script (bash unless it starts with `#!`). |
 | `{"type": "wheel_mode"}`, `{"type": "dpi_cycle"}`, `{"type": "host", "host": 1}` | Toggle the wheel mode, switch between the two pointer speeds, Easy-Switch (channels here count from 0). |
-| `{"type": "flow"}` | Send the mouse to the other computer of Flow, clipboard included (catalogue id `flow`). Nothing happens unless Flow is set up and the other computer is reachable. |
 | `{"type": "hook", "name": "..."}` | Emit `Hook` (see above). |
 | `{"type": "none"}` | Do nothing (a button set to this is still reported by `ButtonPressed`). |
 
@@ -172,9 +171,6 @@ Buttons additionally take `{"type": "default"}` (leave it to the mouse), `{"type
 | `buttons.<button>` | The action of `middle`, `back`, `forward`, `gesture`, `smartshift`, `panel`. |
 | `gestures.trigger`, `gestures.min_mm`, `gestures.far_mm`, `gestures.dead`, `gestures.bias` | How swipes are read. |
 | `ring.bubbles`, `ring.style`, `ring.size` | The user's Actions Ring. |
-| `flow.enabled`, `flow.push_mm`, `flow.corner`, `flow.fullscreen` | Flow: on/off, millimetres to push past the edge, percent of the edge kept free at each end, whether to cross under a full-screen window. |
-| `flow.peers` | The other computers of Flow, two at most, each with `name`, `address`, `edge` (`left`, `right`, `top`, `bottom`: the side it stands on) and `key`, the pairing key: treat that as a password. A single field is addressed like `flow.peers.0.edge`. |
-| `flow.clipboard`, `flow.files`, `flow.files_max_mb`, `flow.cue_arrived`, `flow.cue_failed` | Flow: whether copied text and pictures go along, whether files do, the most megabytes in one go, and the vibration patterns for files that have arrived and files that could not be brought over. |
 
 ## Example: a Python client
 

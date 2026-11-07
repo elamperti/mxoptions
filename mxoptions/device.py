@@ -374,12 +374,11 @@ def battery_status(data):
     return data[0], data[2] if data[2] <= BATTERY_SLOW_CHARGE else BATTERY_DISCHARGING
 
 
-def find_mouse(transport, known=None, hurry=False):
+def find_mouse(transport, known=None):
     """Probe the transport's slots and return the first loaded HID++ 2.0 mouse, or None. ``known`` is
-    a mouse loaded on an earlier connection: if it is the one found, what was learned then is reused.
-    ``hurry``: the mouse is expected any moment, so do not wait long for an answer before asking again."""
+    a mouse loaded on an earlier connection: if it is the one found, what was learned then is reused."""
     for devidx in transport.slots():
-        version = transport.ping(devidx, timeout=0.4 if hurry else 1.5, retries=4 if hurry else 2)
+        version = transport.ping(devidx, timeout=1.5, retries=2)
         if not version or version[0] < 2:
             continue
         mouse = Mouse(transport, devidx)

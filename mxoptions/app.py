@@ -169,7 +169,7 @@ def main(argv=None):
             time.sleep(0.2)
         log.warning("the service did not come up; running without it")
 
-    from . import api, flow_service
+    from . import api
     from .ui import editors, ring, theme, tray_icon
     from .ui.main_window import MainWindow
     from .ui.sounds import WheelSounds
@@ -192,7 +192,6 @@ def main(argv=None):
     sounds = WheelSounds(app)
     sounds.configure(cfg["wheel_click"])
     store = Store(cfg, engine, sounds)
-    store.flow = flow_service.FlowService(store, app)
     bridge.state.connect(store.update_state)
     bridge.seeded.connect(lambda seeded: store.replace(seeded, push=False))
     bridge.pressed.connect(store.pressed_changed)
@@ -224,8 +223,6 @@ def main(argv=None):
             mode, quiet = payload
             if not quiet and store.cfg["wheel_click"]["mode"] in ("sound", "both"):
                 sounds.play(mode)
-        elif kind == "flow":
-            store.flow.on_engine(payload)
         service.api.on_event(kind, payload)
 
     store.changed.connect(config_changed)
@@ -320,7 +317,6 @@ def main(argv=None):
         overlay.close()
         if hasattr(overlay, "shutdown"):  # it lives in a program of its own: that one ends with this one
             overlay.shutdown()
-        store.flow.close()
         store.flush()
         engine.stop()
 
@@ -334,8 +330,4 @@ def main(argv=None):
     engine.start()
     if not args.background:
         window.show()
-    status = app.exec()
-    for _moment in range(10):  # the clipboard service may still be reading: it must finish before Qt is taken down
-        app.processEvents()
-        time.sleep(0.02)
-    return status
+    return app.exec()

@@ -1,5 +1,5 @@
-"""What depends on the desktop besides the actions: the way to the clipboard, the watcher of the screen
-edges, the kind of window the ring is drawn in. The desktops themselves are stand-ins here."""
+"""What depends on the desktop besides the actions: the way to the clipboard for typed text and the
+kind of window the ring is drawn in. The desktops themselves are stand-ins here."""
 
 import os
 import stat
@@ -13,12 +13,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 
 import tests.support  # noqa: E402,F401
-from mxoptions import clipboard, environment, flow, flow_edges  # noqa: E402
+from mxoptions import clipboard, environment  # noqa: E402
 from mxoptions.ui import ring  # noqa: E402
 
 APP = QGuiApplication.instance() or QGuiApplication([])
-ONE = (0, 0, 1920, 1080)
-TWO = [(0, 0, 1920, 1080), (1920, 200, 1280, 720)]  # a smaller screen to the right, lower down
 
 
 class Desktop(unittest.TestCase):
@@ -37,217 +35,72 @@ class Desktop(unittest.TestCase):
                 del os.environ[name]
 
 
-class WayToTheClipboard(Desktop):
-    CONTROL = ("ext_data_control_manager_v1",)
-
-    def setUp(self):
-        self.without("MXOPTIONS_CLIPBOARD")
-        self.addCleanup(setattr, clipboard, "KSystemClipboard", clipboard.KSystemClipboard)
-        clipboard.KSystemClipboard = object()  # as if the bindings were installed
-
-    def test_x11_is_qt_itself(self):
-        self.pretend(environment.OTHER, "x11")
-        self.assertEqual(clipboard._order()[0], "qt")
-
-    def test_data_control_is_the_kde_service_where_its_bindings_are(self):
-        self.pretend(environment.SWAY, "wayland", self.CONTROL)
-        self.assertEqual(clipboard._order(), ["ksystem", "wl-clipboard", "klipper"])
-        clipboard.KSystemClipboard = None
-        self.assertEqual(clipboard._order(), ["wl-clipboard", "klipper"])
-
-    def test_without_data_control_the_kde_service_would_see_nothing(self):
-        self.pretend(environment.GNOME, "wayland")
-        self.assertEqual(clipboard._order(), ["wl-clipboard", "klipper"])
-
-    def test_one_can_be_named(self):
-        self.pretend(environment.KDE, "wayland", self.CONTROL)
-        os.environ["MXOPTIONS_CLIPBOARD"] = "klipper"
-        self.addCleanup(os.environ.pop, "MXOPTIONS_CLIPBOARD", None)
-        self.assertEqual(clipboard._order(), ["klipper"])
-        os.environ["MXOPTIONS_CLIPBOARD"] = "none"
-        self.assertEqual(clipboard._order(), [])
-
-    @unittest.skipIf(sys.platform == "win32", "the lists of wl-clipboard hold Unix paths")
-    def test_files_of_a_list(self):
-        with tempfile.TemporaryDirectory() as folder:
-            here = os.path.join(folder, "звіт 1.txt")
-            open(here, "w").close()
-            listed = f"# copied\r\nfile://{here.replace(' ', '%20')}\r\nfile:///no/such/file\r\nhttps://example.org/x\r\nfile://elsewhere/etc/hosts\r\n"
-            self.assertEqual(clipboard._local_files(listed), [here])
-
-
-WL_COPY = """#!/bin/sh
-# stands in for wl-copy: keeps what it is given, and of which kind
-kind=text/plain
-while [ $# -gt 0 ]; do case "$1" in --type) kind="$2"; shift;; esac; shift; done
-printf '%s' "$kind" > "$STORE/kind"
-cat > "$STORE/data"
-"""
-WL_PASTE = """#!/bin/sh
-# stands in for wl-paste
-[ -f "$STORE/kind" ] || { echo "Nothing is copied" >&2; exit 1; }
-kind=
-while [ $# -gt 0 ]; do case "$1" in --list-types) echo "$(cat "$STORE/kind")"; [ "$(cat "$STORE/kind")" = text/uri-list ] && echo text/plain; exit 0;;
-  --type) kind="$2"; shift;; esac; shift; done
-[ "$kind" = "$(cat "$STORE/kind")" ] || [ "$kind" = text/plain ] || exit 1
-cat "$STORE/data"
+XCLIP = """#!/bin/sh
+if [ "$3" = "-o" ]; then cat "$STORE/clip" 2>/dev/null || exit 1; else cat > "$STORE/clip"; fi
 """
 
 
-@unittest.skipIf(sys.platform == "win32", "wl-clipboard is a Wayland thing")
-class ThroughWlClipboard(unittest.TestCase):
-    """The wl-clipboard way, with stand-ins for its two programs that keep to how those are called."""
+@unittest.skipIf(sys.platform == "win32", "xclip is an X11 thing")
+class TextThroughXclip(Desktop):
+    """The text action's way to the clipboard on X11 without Plasma: a stand-in for xclip."""
 
     def setUp(self):
         self.folder = tempfile.mkdtemp(prefix="mxoptions-test-")
         self.addCleanup(__import__("shutil").rmtree, self.folder, True)
-        for name, text in (("wl-copy", WL_COPY), ("wl-paste", WL_PASTE)):
-            path = os.path.join(self.folder, name)
-            with open(path, "w") as f:
-                f.write(text)
-            os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
-        for name, value in (("PATH", self.folder + os.pathsep + os.environ["PATH"]), ("STORE", self.folder),
-                            ("MXOPTIONS_CLIPBOARD", "wl-clipboard")):
+        path = os.path.join(self.folder, "xclip")
+        with open(path, "w") as f:
+            f.write(XCLIP)
+        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
+        for name, value in (("PATH", self.folder + os.pathsep + "/usr/bin:/bin"), ("STORE", self.folder)):
             self.addCleanup(os.environ.__setitem__, name, os.environ[name]) if name in os.environ else self.addCleanup(os.environ.pop, name, None)
             os.environ[name] = value
-        clipboard.reset()
-        self.addCleanup(clipboard.reset)
+        self.addCleanup(setattr, clipboard, "klipper", clipboard.klipper)
+        clipboard.klipper = lambda method, *args: None  # no Plasma here
+        self.pretend(environment.OTHER, "x11")
 
-    def test_nothing_copied(self):
-        self.assertTrue(clipboard.available() and clipboard.rich())
-        self.assertEqual(clipboard.read(), {"files": [], "image": None, "text": ""})
+    def test_text_goes_there_and_back(self):
+        self.assertEqual(clipboard.get_text(), "")  # nothing copied yet
+        self.assertTrue(clipboard.set_text("hello, xclip"))
+        self.assertEqual(clipboard.get_text(), "hello, xclip")
 
-    def test_text(self):
-        self.assertTrue(clipboard.write(text="привіт, wl-copy"))
-        self.assertEqual(clipboard.read()["text"], "привіт, wl-copy")
-
-    def test_a_picture(self):
-        from PySide6.QtGui import QImage
-
-        picture = QImage(3, 2, QImage.Format.Format_RGB32)
-        picture.fill(0x336699)
-        png = clipboard._png(picture)
-        self.assertTrue(clipboard.write(image=png))
-        self.assertEqual(clipboard.read()["image"], png)
-        self.assertIsNone(clipboard.read(image_limit=10)["image"])  # larger than wanted: left out
-
-    def test_files(self):
-        paths = [os.path.join(self.folder, "a file.txt"), os.path.join(self.folder, "тека")]
-        open(paths[0], "w").close()
-        os.mkdir(paths[1])
-        self.assertTrue(clipboard.write(files=paths))
-        with open(os.path.join(self.folder, "data"), "rb") as f:
-            self.assertIn(b"a%20file.txt\r\n", f.read())  # as a list of addresses, which is what file managers take
-        self.assertEqual(clipboard.read()["files"], paths)
-
-    def test_no_way_at_all(self):
-        os.environ["MXOPTIONS_CLIPBOARD"] = "none"
-        clipboard.reset()
-        self.assertFalse(clipboard.available() or clipboard.rich())
-        self.assertFalse(clipboard.write(text="x"))
-        self.assertEqual(clipboard.read()["text"], "")
+    def test_no_tool_at_all(self):
+        os.environ["PATH"] = os.path.join(self.folder, "nowhere")
+        self.assertIsNone(clipboard.get_text())
+        self.assertFalse(clipboard.set_text("x"))
 
 
-class EdgeGeometry(unittest.TestCase):
-    def test_at_an_outer_edge(self):
-        self.assertEqual(flow.at_edge("right", (1919, 500), [ONE]), (ONE, 0))
-        self.assertEqual(flow.at_edge("right", (1915, 500), [ONE]), (ONE, 4))
-        self.assertEqual(flow.at_edge("top", (5, 3), [ONE]), (ONE, 3))
-        self.assertIsNone(flow.at_edge("right", (5000, 5), [ONE]))  # on no screen at all
-
-    def test_an_edge_another_screen_continues_behind_is_none(self):
-        self.assertIsNone(flow.at_edge("right", (1919, 500), TWO))
-        self.assertEqual(flow.at_edge("right", (1919, 100), TWO), (TWO[0], 0))  # above where the second screen begins
-        self.assertEqual(flow.at_edge("right", (3199, 500), TWO), (TWO[1], 0))
-
-    def test_the_free_stretch_of_a_side(self):
-        self.assertEqual(flow.outer_span("right", ONE, [ONE]), (0, 1080))
-        self.assertEqual(flow.outer_span("right", TWO[0], TWO), (0, 200))   # the longer of the two free ends
-        self.assertIsNone(flow.outer_span("left", TWO[1], TWO))
-        self.assertEqual(flow.outer_span("top", TWO[1], TWO), (0, 1280))
-
-    def test_where_the_lines_go(self):
-        self.assertEqual(flow_edges.strip_places({"right"}, [ONE], 0.1), [("right", ONE, 108, 864)])
-        self.assertEqual(flow_edges.strip_places({"top", "right"}, TWO, 0.0),
-                         [("right", TWO[0], 0, 200), ("right", TWO[1], 0, 720), ("top", TWO[0], 0, 1920), ("top", TWO[1], 0, 1280)])
-        self.assertEqual(flow_edges.strip_places({"right"}, TWO, 0.25), [("right", TWO[1], 180, 360)])  # the corners take the rest
-
-
-class AskingWhereThePointerIs(unittest.TestCase):
+class WhichWindowForTheRing(Desktop):
     def setUp(self):
-        self.addCleanup(setattr, flow_edges, "_fullscreen_in_front", flow_edges._fullscreen_in_front)
-        flow_edges._fullscreen_in_front = lambda: False
-        self.watcher = flow_edges.Poll()
-        self.heard = []
-        self.watcher.reported.connect(self.heard.append)
-        self.watcher.watch(frozenset({"right"}))
-        self.addCleanup(self.watcher.close)
-
-    def look(self, *points):
-        del self.heard[:]
-        for point in points:
-            self.watcher.look(point, [ONE])
-        return [(report["at"], report.get("y")) for report in self.heard]
-
-    def test_reaching_takes_touching_and_leaving_takes_a_few_pixels(self):
-        self.assertTrue(self.watcher.watching)
-        self.assertEqual(self.look((1915, 500)), [])               # near is not there
-        self.assertEqual(self.look((1919, 500)), [(True, 500)])
-        self.assertEqual(self.look((1916, 500), (1919, 503)), [])  # pushed back a little, moved a little: nothing new
-        self.assertEqual(self.look((1919, 520)), [(True, 520)])    # slid along it
-        self.assertEqual(self.look((1900, 520)), [(False, None)])
-        self.assertEqual(self.look((1900, 600)), [])
-
-    def test_a_full_screen_window_is_told(self):
-        flow_edges._fullscreen_in_front = lambda: True
-        self.watcher.look((1919, 500), [ONE])
-        self.assertTrue(self.heard[0]["full"])
-        self.assertEqual(self.heard[0]["screen"], list(ONE))
-
-    def test_nothing_is_watched_once_stopped(self):
-        self.watcher.watch(frozenset())
-        self.assertFalse(self.watcher.watching)
-        self.assertEqual(self.look((1919, 500)), [])
-
-
-class WhichWatcherAndWhichWindow(Desktop):
-    def setUp(self):
-        self.without("MXOPTIONS_FLOW_EDGES", "MXOPTIONS_RING")
+        self.without("MXOPTIONS_RING")
         self.addCleanup(os.environ.__setitem__, "DISPLAY", os.environ["DISPLAY"]) if "DISPLAY" in os.environ else \
             self.addCleanup(os.environ.pop, "DISPLAY", None)
-        self.addCleanup(setattr, flow_edges, "kwin_running", flow_edges.kwin_running)
-        flow_edges.kwin_running = lambda: False
 
     def test_kde(self):
-        self.pretend(environment.KDE, "wayland", (flow_edges.LAYER_SHELL,))
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), ("kwin", ring.LAYER))
+        self.pretend(environment.KDE, "wayland", ("zwlr_layer_shell_v1",))
+        self.assertEqual(ring.overlay_kind(), ring.LAYER)
         self.pretend(environment.KDE, "x11")
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), ("kwin", ring.X11))
+        self.assertEqual(ring.overlay_kind(), ring.X11)
 
     def test_x11(self):
         self.pretend(environment.OTHER, "x11")
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), ("poll", ring.X11))
+        self.assertEqual(ring.overlay_kind(), ring.X11)
 
     def test_wayland_with_layers(self):
-        self.pretend(environment.SWAY, "wayland", (flow_edges.LAYER_SHELL,))
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), ("strips", ring.LAYER))
+        self.pretend(environment.SWAY, "wayland", ("zwlr_layer_shell_v1",))
+        self.assertEqual(ring.overlay_kind(), ring.LAYER)
 
     def test_wayland_without(self):
         self.pretend(environment.GNOME, "wayland", ("xdg_wm_base",))
         os.environ["DISPLAY"] = ":7"  # such a session keeps an X server for X11 programs: the ring goes there
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), (None, ring.XWAYLAND))
-        self.assertIsNone(flow_edges.create())
+        self.assertEqual(ring.overlay_kind(), ring.XWAYLAND)
         del os.environ["DISPLAY"]     # ... unless it was told not to keep one
         self.assertEqual(ring.overlay_kind(), ring.WINDOW)
 
-    def test_each_can_be_named(self):
+    def test_it_can_be_named(self):
         self.pretend(environment.GNOME, "wayland")
-        os.environ.update(MXOPTIONS_FLOW_EDGES="poll", MXOPTIONS_RING="x11")
-        self.addCleanup(os.environ.pop, "MXOPTIONS_FLOW_EDGES", None)
+        os.environ["MXOPTIONS_RING"] = "x11"
         self.addCleanup(os.environ.pop, "MXOPTIONS_RING", None)
-        self.assertEqual((flow_edges._choice(), ring.overlay_kind()), ("poll", ring.X11))
-        os.environ["MXOPTIONS_FLOW_EDGES"] = "none"
-        self.assertIsNone(flow_edges._choice())
+        self.assertEqual(ring.overlay_kind(), ring.X11)
 
 
 @unittest.skipIf(sys.platform == "win32", "only GNOME needs the ring in a program of its own")

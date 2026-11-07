@@ -5,7 +5,7 @@ import json
 import logging
 import os
 
-from . import device, environment, flow, gestures, paths
+from . import device, environment, gestures, paths
 from .actions import DEFAULT, PRESET_BY_ID, SCROLLS, dial_available
 
 log = logging.getLogger(__name__)
@@ -266,26 +266,6 @@ DEFAULTS = {
     "app": {"language": "auto", "theme": "graphite", "accent": "#2fd6a7", "model": "photo", "mouse_color": "graphite",
             "tray_icon": "outline",  # the look of the icon in the system tray
             "api": True},  # let other programs talk to the app over D-Bus
-    # One mouse on two or three computers, see flow.py
-    "flow": {
-        "enabled": False,
-        "id": "",             # what this computer goes by among the others, made up once; a name may be shared, this is not
-        # The other computers, two at most: {"key": the pairing key both hold, "id": what it goes by, "address":
-        # where it was last reached (may be empty), "name": what it calls itself, "edge": the edge of this desktop
-        # it is behind (left | right | top | bottom), "edge_at": when that was chosen (Unix time): the later choice of
-        # two decides}
-        "peers": [],
-        "port": flow.PORT,    # where this computer listens for the others
-        "push_mm": 10.0,      # how far the mouse has to be pushed on, once the pointer is at the edge, to cross
-        "corner": 10,         # percent of the edge at each of its ends where pushing does nothing (hot corners live there)
-        "fullscreen": False,  # cross even while a full-screen window (a game, a film) is in front
-        "clipboard": True,    # hand the copied text or picture over with the pointer
-        "files": True,        # ... and copied files and folders
-        "files_max_mb": 2048,  # at most this much in one go, sending or receiving
-        "cue_arrived": 0x07,  # the vibration when copied files have arrived (None: none)
-        "cue_failed": 0x06,   # ... and when they could not be brought over
-        "channel": -1,        # this computer's Easy-Switch channel, noted whenever the mouse is here (-1: not seen yet)
-    },
 }
 
 
@@ -317,33 +297,6 @@ def _waveform(value, default):
     """A vibration pattern: an id the HAPTIC feature knows, or None for "no vibration"."""
     known = isinstance(value, int) and not isinstance(value, bool) and value in device.WAVEFORMS
     return value if value is None or known else default
-
-
-def _flow_peers(link):
-    """The other computers of Flow, checked: a usable key each, no key twice, an edge of its own each."""
-    found = link.get("peers") if isinstance(link.get("peers"), list) else []
-    if not found and isinstance(link.get("key"), str) and link["key"].strip():  # settings from before there could be two
-        found = [{"key": link["key"], "address": link.get("peer"), "name": link.get("peer_name"), "edge": link.get("edge"),
-                  "edge_at": link.get("edge_at")}]
-    peers, keys, edges = [], set(), set()
-    for entry in found:
-        key = entry.get("key").strip()[:200] if isinstance(entry, dict) and isinstance(entry.get("key"), str) else ""
-        if not flow.key_usable(key) or flow.normalize_key(key) in keys or len(peers) >= flow.MAX_PEERS:
-            continue
-        keys.add(flow.normalize_key(key))
-        edge = entry.get("edge") if entry.get("edge") in flow.EDGES and entry.get("edge") not in edges else \
-            next(side for side in ("right", "left", "top", "bottom") if side not in edges)
-        edges.add(edge)
-        chosen = entry.get("edge_at")
-        peers.append({
-            "key": key,
-            "id": entry["id"][:64] if isinstance(entry.get("id"), str) else "",
-            "address": entry["address"].strip()[:200] if isinstance(entry.get("address"), str) else "",
-            "name": entry["name"].strip()[:64] if isinstance(entry.get("name"), str) else "",
-            "edge": edge,
-            "edge_at": float(min(max(chosen, 0.0), 4.0e9)) if isinstance(chosen, (int, float)) and not isinstance(chosen, bool) else 0.0,
-        })
-    return peers
 
 
 def _migrate_ring(ring):
@@ -454,20 +407,7 @@ def _sanitize(cfg):
     for key in ("free", "ratchet"):
         click[key] = _waveform(click.get(key, default_click[key]), default_click[key])
     _clamp(cfg, "wheel_click", "volume", 0.0, 1.0, float)
-    link = cfg["flow"]
-    for key in ("enabled", "clipboard", "files", "fullscreen"):
-        link[key] = bool(link.get(key))
-    link["peers"] = _flow_peers(link)
-    link["id"] = link["id"][:64] if isinstance(link.get("id"), str) else ""
-    for old in ("key", "peer", "peer_name", "edge", "edge_at"):  # where the one other computer was kept before there could be two
-        link.pop(old, None)
-    for key in ("cue_arrived", "cue_failed"):
-        link[key] = _waveform(link.get(key, DEFAULTS["flow"][key]), DEFAULTS["flow"][key])
-    _clamp(cfg, "flow", "push_mm", 0.0, 60.0, float)
-    _clamp(cfg, "flow", "corner", 0, 40)
-    _clamp(cfg, "flow", "files_max_mb", 1, 65536)
-    _clamp(cfg, "flow", "port", 1024, 65535)
-    _clamp(cfg, "flow", "channel", -1, 15)
+    cfg.pop("flow", None)  # Flow was removed; settings saved before keep its section
     for key in ("dpi", "alt_dpi", "precision_dpi"):
         _clamp(cfg, "pointer", key, 100, 32000)
     _clamp(cfg, "wheel", "threshold", 1, 50)
@@ -543,7 +483,7 @@ def load():
 def save(cfg):
     os.makedirs(CONFIG_DIR, exist_ok=True)
     tmp = CONFIG_PATH + ".tmp"
-    # Readable by the user alone: the file holds the pairing key of Flow.
+    # Readable by the user alone.
     with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as f:
         os.fchmod(f.fileno(), 0o600)  # a file left over from an earlier attempt keeps its old mode otherwise
         json.dump(cfg, f, indent=2, ensure_ascii=False)

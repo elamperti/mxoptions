@@ -307,6 +307,8 @@ def available(action, desktop=None):
 
 def modernize(action):
     """``action``, or what the catalogue calls it now if it is one of the KDE shortcuts it used to hold."""
+    if isinstance(action, dict) and action.get("type") == "flow":  # Flow was removed
+        return {"type": "none"}
     if isinstance(action, dict) and action.get("type") == "shortcut":
         try:
             name = _LEGACY.get(json.dumps(action, sort_keys=True))

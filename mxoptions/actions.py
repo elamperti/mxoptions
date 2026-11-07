@@ -14,7 +14,6 @@ An action is a plain JSON-able dict:
     {"type": "dpi_cycle"}                    toggle between the two pointer speeds
     {"type": "dpi_shift"}                    precision speed while held
     {"type": "host", "host": n}              Easy-Switch to channel n
-    {"type": "flow"}                         move to the other computer of Flow, clipboard included
     {"type": "gestures", "tap": a, "up": a, "down": a, "left": a, "right": a}
     {"type": "ring"}                         open the Actions Ring
     {"type": "hook", "name": "..."}          only announce it on D-Bus: another program decides what happens
@@ -149,7 +148,6 @@ _PRESETS = [
     ("host_1", "easyswitch", "Easy-Switch 1", "computer", {"type": "host", "host": 0}),
     ("host_2", "easyswitch", "Easy-Switch 2", "computer", {"type": "host", "host": 1}),
     ("host_3", "easyswitch", "Easy-Switch 3", "computer", {"type": "host", "host": 2}),
-    ("flow", "easyswitch", "Move to the other computer (Flow)", "transform-move", {"type": "flow"}),
 ]
 
 CATEGORIES = [
@@ -460,7 +458,7 @@ class Executor:
         elif kind == "button":
             if self.vinput:
                 self.vinput.press([action["button"]])
-        elif kind in ("wheel_mode", "dpi_cycle", "dpi_shift", "host", "flow"):
+        elif kind in ("wheel_mode", "dpi_cycle", "dpi_shift", "host"):
             self.device_action(action, "press")
         elif kind == "hook":
             self.hook(action.get("name", ""), "press")
@@ -499,7 +497,7 @@ class Executor:
         elif kind == "button":
             if self.vinput:
                 self.vinput.tap([action["button"]])
-        elif kind in ("wheel_mode", "dpi_cycle", "host", "flow"):
+        elif kind in ("wheel_mode", "dpi_cycle", "host"):
             self.device_action(action, "trigger")
         elif kind == "hook":
             self.hook(action.get("name", ""), "trigger")
