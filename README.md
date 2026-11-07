@@ -151,6 +151,29 @@ give those buttons an i3 command instead, such as `i3-msg workspace next`.
 Without a system tray the program has nowhere to sit behind its window: started in the background
 it still runs, and starting it again from the menu opens the window.
 
+## Easy-Switch from a script
+
+`make install` also puts `mx-switch` into `~/.local/bin`. It sends the mouse to another paired
+computer; channels count from 1, as printed on the mouse:
+
+```sh
+mx-switch 2
+```
+
+While MX Options runs, `mx-switch` asks it over D-Bus, which any script can also do directly:
+
+```sh
+busctl --user call org.mxoptions.MXOptions /org/mxoptions/Mouse org.mxoptions.Mouse1 SwitchHost i 2
+```
+
+When the program is not running, `mx-switch` talks HID++ to the mouse itself
+(`python -m mxoptions.switch 2`, standard library only). An i3 binding is one line:
+`bindsym $mod+F2 exec --no-startup-id mx-switch 2`.
+
+It goes one way only: once the mouse is on the other computer, this one cannot call it back. The
+way back is that computer's job (the Easy-Switch button under the mouse, or Logi Options+ on a
+Mac). A keyboard does not follow; a Logitech keyboard has its own Easy-Switch.
+
 ## Permissions
 
 The app talks to the mouse through its `hidraw` device and sends key presses, clicks and scrolling
@@ -245,6 +268,7 @@ make test                                                        # unit tests fo
 | `mxoptions/actions.py`, `vinput.py` | the action catalogue, its executor, the virtual keyboard and mouse |
 | `mxoptions/config.py` | the settings file: defaults, validation, migration, ring presets |
 | `mxoptions/api.py` | the D-Bus interface |
+| `mxoptions/switch.py` | Easy-Switch from a script while the program is not running |
 | `mxoptions/rumble.py` | the virtual gamepad that games vibrate |
 | `mxoptions/clipboard.py` | text on the clipboard, for the *Text* action |
 | `mxoptions/ui/` | the settings window, the ring overlay, sounds |

@@ -1,0 +1,16 @@
+#!/bin/sh
+# mx-switch <channel>: Easy-Switch the MX mouse to another paired computer (channels count from 1).
+# Asks the running MX Options over D-Bus; when it is not running, talks to the mouse directly.
+set -eu
+usage() { echo "usage: mx-switch <channel, from 1>" >&2; exit 64; }
+[ $# -eq 1 ] || usage
+case $1 in ''|*[!0-9]*) usage ;; esac
+
+service=org.mxoptions.MXOptions
+if busctl --user status "$service" >/dev/null 2>&1; then
+    reply=$(busctl --user call "$service" /org/mxoptions/Mouse org.mxoptions.Mouse1 SwitchHost i "$1")
+    [ "$reply" = "b true" ] && exit 0
+    echo "mx-switch: MX Options refused channel $1 (no such channel, or the mouse is not connected)" >&2
+    exit 1
+fi
+PYTHONPATH="@LIBDIR@${PYTHONPATH:+:$PYTHONPATH}" exec @PYTHON@ -m mxoptions.switch "$1"

@@ -4,6 +4,7 @@
 #   make test             run the unit tests
 #   make run              start the program from this source tree
 #   make install          install for the current user under ~/.local (no root needed)
+#   mx-switch 2           (once installed) send the mouse to Easy-Switch channel 2
 #   make enable           start the service now and with every graphical session
 #   make i3               let the service start with an i3 session (see README, "i3")
 #   sudo make udev        install the device access rules (once; see README, "Permissions")
@@ -66,6 +67,8 @@ install: build
 	$(PYTHON) -m compileall -q "$(libdir)/mxoptions"
 	$(substitute) data/mxoptions.in > "$(bindir)/mxoptions"
 	chmod 755 "$(bindir)/mxoptions"
+	$(substitute) data/mx-switch.in > "$(bindir)/mx-switch"
+	chmod 755 "$(bindir)/mx-switch"
 	$(substitute) data/mxoptions.service.in > "$(unitdir)/mxoptions.service"
 	sed -e 's|^Exec=mxoptions|Exec=$(bindir)/mxoptions|' data/mxoptions.desktop > "$(datadir)/applications/mxoptions.desktop"
 	install -Dm644 mxoptions/assets/icon.svg "$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg"
@@ -78,7 +81,7 @@ install: build
 
 uninstall: disable
 	rm -rf "$(libdir)"
-	rm -f "$(bindir)/mxoptions" "$(unitdir)/mxoptions.service" "$(unitdir)/i3-session.target" \
+	rm -f "$(bindir)/mxoptions" "$(bindir)/mx-switch" "$(unitdir)/mxoptions.service" "$(unitdir)/i3-session.target" \
 		"$(datadir)/applications/mxoptions.desktop" "$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg" \
 		"$(datadir)"/icons/hicolor/scalable/status/mxoptions-tray-*.svg  # the last ones are drawn by the program for its tray icon
 	-systemctl --user daemon-reload
