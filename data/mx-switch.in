@@ -13,4 +13,14 @@ if busctl --user status "$service" >/dev/null 2>&1; then
     echo "mx-switch: MX Options refused channel $1 (no such channel, or the mouse is not connected)" >&2
     exit 1
 fi
+# Not on D-Bus: either not running, or running with "Let other programs use the mouse" switched off.
+# Asking it directly tells the two apart (exit status 3: not running), so the mouse is never opened twice.
+status=0
+"@BINDIR@/mxoptions" --call SwitchHost "$1" >/dev/null 2>&1 || status=$?
+case $status in
+    0) exit 0 ;;
+    3) ;;
+    *) echo "mx-switch: MX Options is running but does not let other programs in (Settings, Integrations)" >&2
+       exit 1 ;;
+esac
 PYTHONPATH="@LIBDIR@${PYTHONPATH:+:$PYTHONPATH}" exec @PYTHON@ -m mxoptions.switch "$1"

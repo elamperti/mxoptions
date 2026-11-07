@@ -2,7 +2,7 @@
 
 Talks HID++ to the mouse directly, with nothing but the standard library. While MX Options runs, ask
 it instead (its SwitchHost D-Bus method), so that two programs do not talk to the mouse at once;
-tools/mx-switch does that and falls back to this."""
+mx-switch (data/mx-switch.in) does that and falls back to this."""
 
 import sys
 

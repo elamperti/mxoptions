@@ -166,7 +166,9 @@ While MX Options runs, `mx-switch` asks it over D-Bus, which any script can also
 busctl --user call org.mxoptions.MXOptions /org/mxoptions/Mouse org.mxoptions.Mouse1 SwitchHost i 2
 ```
 
-When the program is not running, `mx-switch` talks HID++ to the mouse itself
+This needs *Let other programs use the mouse* (Settings, Integrations), which is on by default;
+with it off, `mx-switch` says so instead of opening the mouse behind the program's back. When the
+program is not running, `mx-switch` talks HID++ to the mouse itself
 (`python -m mxoptions.switch 2`, standard library only). An i3 binding is one line:
 `bindsym $mod+F2 exec --no-startup-id mx-switch 2`.
 

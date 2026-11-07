@@ -26,6 +26,8 @@ udevdir = /etc/udev/rules.d
 
 VENV ?= $(libdir)/venv
 PYTHON = $(VENV)/bin/python
+# Written last, so that a pip install that failed halfway is tried again.
+READY = $(VENV)/.dependencies-installed
 DEPENDENCIES = "PySide6>=6.6" "evdev>=1.6" numpy
 
 substitute = sed -e 's|@BINDIR@|$(bindir)|g' -e 's|@LIBDIR@|$(libdir)|g' -e 's|@PYTHON@|$(PYTHON)|g'
@@ -34,29 +36,30 @@ substitute = sed -e 's|@BINDIR@|$(bindir)|g' -e 's|@LIBDIR@|$(libdir)|g' -e 's|@
 
 all: build
 
-$(PYTHON):
+$(READY):
 	$(SYSTEM_PYTHON) -m venv "$(VENV)"
 	$(PYTHON) -m pip install --quiet --upgrade pip
 	$(PYTHON) -m pip install --quiet $(DEPENDENCIES)
+	touch "$(READY)"
 
-venv: $(PYTHON)
+venv: $(READY)
 
 venv-reset:
 	rm -rf "$(VENV)"
 	$(MAKE) venv
 
-build: $(PYTHON)
+build: $(READY)
 	$(PYTHON) -m compileall -q mxoptions
 
-test: $(PYTHON)
+test: $(READY)
 	QT_QPA_PLATFORM=offscreen $(PYTHON) -m unittest discover -s tests
 
 check: build test
 
-run: $(PYTHON)
+run: $(READY)
 	$(PYTHON) main.py
 
-screenshots: $(PYTHON)
+screenshots: $(READY)
 	$(PYTHON) tools/screenshots.py docs/screenshots
 
 install: build
