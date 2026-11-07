@@ -4,8 +4,6 @@ A settings app for Logitech MX Master mice on Linux, in the spirit of Logi Optio
 gestures, the Actions Ring, the wheels, haptics and Easy-Switch, with a tray icon, a background
 service and a D-Bus API for other programs.
 
-[Українською](README.uk.md)
-
 > **Written by an AI.** Every part of this project (the code, the interface, the sounds, the tests
 > and this documentation) was written by [Claude](https://claude.com/claude-code), Anthropic's AI
 > model, working in Claude Code. A human, [nictonus](https://github.com/nictonus), directed the work
@@ -47,8 +45,7 @@ service and a D-Bus API for other programs.
   They are paired with a six-digit code and talk over an encrypted link. See [Flow](#flow).
 - **Also:** Easy-Switch between computers, a tray icon in five styles (plain ones in the colour of
   your panel that show a missing mouse and a low battery, one that fills with the charge), firmware
-  versions with an update check through fwupd, four themes with any accent colour, English and
-  Ukrainian.
+  versions with an update check through fwupd, four themes with any accent colour.
 - **For other programs:** a [D-Bus API](docs/API.md) to play vibrations, run actions, show a ring of
   their own, change settings, and follow buttons, gestures and the wheel.
 
@@ -475,7 +472,6 @@ then, and for other mice, it draws its own 3D model.
 
 ```sh
 make test                                  # unit tests for the logic (no mouse needed)
-python3 tools/check_i18n.py                # untranslated, unused and duplicated strings
 python3 tools/screenshots.py /tmp/shots    # render every page without a mouse or a screen
 ```
 

@@ -1,6 +1,6 @@
 # MX Options: build, test, install.
 #
-#   make                  compile everything and check the translations
+#   make                  compile everything
 #   make test             run the unit tests
 #   make install-user     install for the current user under ~/.local (no root needed)
 #   make enable           start the service now and at every login
@@ -42,7 +42,6 @@ all: build
 
 build:
 	$(PYTHON) -m compileall -q mxoptions
-	$(PYTHON) tools/check_i18n.py
 
 test:
 	$(PYTHON) -m unittest discover -s tests

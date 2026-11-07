@@ -45,7 +45,6 @@ def _entry(background):
         "Type=Application",
         f"Name={APP_NAME}",
         "Comment=Buttons, gestures, scrolling and haptics for Logitech MX mice",
-        "Comment[uk]=Кнопки, жести, прокрутка та вібровідгук для мишей Logitech MX",
         f"Exec={command}",
         f"Icon={ICON_PATH}",
         "Terminal=false",

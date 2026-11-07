@@ -3,10 +3,10 @@
 
 The window is driven by a stand-in engine with a made-up MX Master 4, so this works anywhere and
 touches neither the device nor the user's settings. It is how the pictures in the README are made,
-and a quick way to look at a layout change in both languages and all themes.
+and a quick way to look at a layout change in all themes.
 
     python3 tools/screenshots.py docs/screenshots
-    python3 tools/screenshots.py /tmp/shots --lang uk --theme light --accent '#4c9bff' --font 'MesloLGM Nerd Font'
+    python3 tools/screenshots.py /tmp/shots --theme light --accent '#4c9bff' --font 'MesloLGM Nerd Font'
 """
 
 import argparse
@@ -50,7 +50,6 @@ class StandInEngine:
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("out", help="directory for the PNG files")
-    parser.add_argument("--lang", default="en", choices=("en", "uk"))
     parser.add_argument("--theme", default="graphite")
     parser.add_argument("--accent", default="#2fd6a7")
     parser.add_argument("--font", help="application font family (default: the system's)")
@@ -60,7 +59,7 @@ def main():
     parser.add_argument("--size", default="1280x780", help="window size")
     args = parser.parse_args()
 
-    i18n.setup(args.lang)
+    i18n.setup()
     app = QApplication([])
     if args.font:
         app.setFont(QFont(args.font, 10))

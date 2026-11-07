@@ -688,9 +688,6 @@ class DevicePage(ScrollPage):
         self.launcher.toggled.connect(self._guard(desktop.set_launcher, self.launcher))
         launcher_row = card.add(Row(_("Show in the application menu"), None, self.launcher))
         launcher_row.setVisible(not desktop.launcher_managed())  # a system-wide installation has its own entry
-        self.language = Segmented([("auto", _("Auto")), ("en", "English"), ("uk", "Українська")])
-        self.language.selected.connect(self._language)
-        self.language_row = card.add(Row(_("Language"), _("Takes effect after restarting the app."), self.language))
         reset = QPushButton(_("Restore defaults"))
         reset.setCursor(Qt.CursorShape.PointingHandCursor)
         reset.clicked.connect(self._reset)
@@ -794,9 +791,6 @@ class DevicePage(ScrollPage):
                 QMessageBox.warning(self, APP_NAME, str(e))
         return apply
 
-    def _language(self, value):
-        self.store.set("app", "language", value)
-
     def _custom_accent(self):
         color = QColorDialog.getColor(QColor(self.store.cfg["app"]["accent"]), self, _("Accent colour"))
         if color.isValid():
@@ -820,7 +814,6 @@ class DevicePage(ScrollPage):
         self.tray.set_value(app["tray_icon"])
         self.api.set_checked_silently(app["api"])
         self.api_example_row.setEnabled(app["api"])
-        self.language.set_value(app["language"])
 
     def _state(self, state):
         self.uinput_warning.setVisible(not state["uinput"])
