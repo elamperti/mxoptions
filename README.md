@@ -144,6 +144,17 @@ one line in the i3 config starts the service (and anything else tied to the grap
 exec --no-startup-id systemctl --user start i3-session.target
 ```
 
+Setting it up from scratch on i3, in order:
+
+1. Quit any other program that configures the mouse (see [Other mouse software](#other-mouse-software)); two of them undo each other's settings.
+2. `make install` (skip if already done; it is safe to repeat).
+3. `make enable` to enable `mxoptions.service` and start it now.
+4. `make i3` to install `i3-session.target` into `~/.config/systemd/user`.
+5. Add `exec --no-startup-id systemctl --user start i3-session.target` to the i3 config, then reload i3 (`$mod+Shift+r`) or log in again.
+6. Check: `systemctl --user is-active graphical-session.target mxoptions` prints `active` twice, and the mouse icon is in the i3bar tray.
+
+To back out: `make disable`, remove the line from the i3 config, and `make uninstall` if the program should go too.
+
 "Start at login" in the app keeps working as on other desktops. The ready actions for windows and
 desktops send the key combinations of a generic X11 desktop, which i3 does not bind by default:
 give those buttons an i3 command instead, such as `i3-msg workspace next`.
