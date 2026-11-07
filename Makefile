@@ -8,13 +8,6 @@
 #   sudo make udev        install the device access rules (once; see README, "Permissions")
 #   make uninstall-user   remove the per-user installation
 #   sudo make uninstall   remove the system-wide installation
-#   make deb              build the Debian/Ubuntu package into dist/ (needs only Python)
-#   make deb-test         install that package inside Debian and run the tests there (no root, no container engine)
-#   make rpm              build the RPM inside Fedora, install it there and run the tests
-#   make dist             build the files of a release into dist/ (after its tag is on GitHub)
-#   make aur              publish packaging/aur to the AUR (needs an AUR account with your SSH key)
-#
-# Packagers: make DESTDIR=... PREFIX=/usr udevdir=/usr/lib/udev/rules.d install
 
 PREFIX ?= /usr/local
 DESTDIR ?=
@@ -36,7 +29,7 @@ python_path = $(shell command -v $(PYTHON))
 substitute = sed -e 's|@BINDIR@|$(bindir)|g' -e 's|@LIBDIR@|$(libdir)|g' -e 's|@DOCDIR@|$(docdir)|g' \
 	-e 's|@PYTHON@|$(python_path)|g'
 
-.PHONY: all build test check wheel deb deb-test rpm dist aur run screenshots install install-user uninstall uninstall-user enable disable udev clean
+.PHONY: all build test check run screenshots install install-user uninstall uninstall-user enable disable udev clean
 
 all: build
 
@@ -47,41 +40,6 @@ test:
 	$(PYTHON) -m unittest discover -s tests
 
 check: build test
-
-wheel:
-	$(PYTHON) -m build --wheel --no-isolation --outdir dist
-
-# The Debian package: the files as "install" lays them out under /usr, wrapped up by tools/make_deb.py.
-# The RPM is built from packaging/rpm/mxoptions.spec, on a system that has rpmbuild or with "make rpm".
-deb: build
-	rm -rf build/deb
-	$(MAKE) install DESTDIR="$(CURDIR)/build/deb" PREFIX=/usr udevdir=/usr/lib/udev/rules.d
-	$(PYTHON) tools/make_deb.py build/deb dist
-	rm -rf build
-
-# Trying the packages where they belong. tools/distro.py fetches the distribution's official image and
-# enters it through a user namespace; what gets installed there is kept for the next run.
-DEBIAN ?= debian:trixie-slim
-FEDORA ?= fedora:42
-
-deb-test: deb
-	$(PYTHON) tools/distro.py $(DEBIAN) -- sh packaging/deb/check.sh
-
-rpm: build
-	$(PYTHON) tools/distro.py $(FEDORA) -- sh packaging/rpm/build.sh
-
-# What a release on GitHub carries: the Arch package (built by packaging/aur/PKGBUILD from the
-# tagged source archive, so the tag has to be pushed first), the wheel, and their checksums.
-dist:
-	@version=$$($(PYTHON) -c 'import mxoptions; print(mxoptions.__version__)'); \
-	grep -qx "pkgver=$$version" packaging/aur/PKGBUILD || { \
-		echo "packaging/aur/PKGBUILD is not at $$version: set pkgver and sha256sums for the pushed tag" >&2; exit 1; }
-	rm -rf dist build
-	mkdir -p dist build/makepkg
-	$(PYTHON) -m build --wheel --no-isolation --outdir dist
-	cd packaging/aur && PKGDEST="$(CURDIR)/dist" BUILDDIR="$(CURDIR)/build/makepkg" SRCDEST="$(CURDIR)/build/makepkg" makepkg -f
-	rm -rf build *.egg-info
-	cd dist && sha256sum * > SHA256SUMS
 
 run:
 	$(PYTHON) main.py
@@ -143,17 +101,6 @@ udev:
 	-udevadm trigger --subsystem-match=hidraw
 	-udevadm trigger --sysname-match=uinput
 
-# The AUR keeps every package in a git repository of its own; pushing to it publishes.
-aur:
-	cd packaging/aur && makepkg --printsrcinfo | diff -q - .SRCINFO
-	rm -rf build/aur
-	git clone ssh://aur@aur.archlinux.org/mxoptions.git build/aur
-	cp packaging/aur/PKGBUILD packaging/aur/.SRCINFO packaging/aur/mxoptions.install build/aur/
-	cd build/aur && git add PKGBUILD .SRCINFO mxoptions.install \
-		&& git commit -m "mxoptions $$(sed -n 's/^\tpkgver = //p' .SRCINFO)-$$(sed -n 's/^\tpkgrel = //p' .SRCINFO)" \
-		&& git push origin HEAD:master
-	rm -rf build
-
 clean:
-	rm -rf build dist *.egg-info packaging/aur/pkg packaging/aur/src
+	rm -rf build dist *.egg-info
 	find . -name __pycache__ -prune -exec rm -rf {} +

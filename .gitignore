@@ -4,16 +4,6 @@ __pycache__/
 /dist/
 *.egg-info/
 
-# nix build output
-/result
-/result-*
-
-# makepkg leftovers
-/packaging/aur/pkg/
-/packaging/aur/src/
-*.pkg.tar.*
-/packaging/aur/*.tar.gz
-
 # editors
 .vscode/
 .idea/

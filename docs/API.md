@@ -21,7 +21,7 @@ empty string, never by a D-Bus error.
 ## Without D-Bus: `mxoptions --call`
 
 The methods and properties below can also be asked of the running program through the program
-itself, which needs no D-Bus tool and is the way in on Windows, where there is no session bus:
+itself, which needs no D-Bus tool:
 
 ```sh
 mxoptions --call PlayHaptic knock     # true
