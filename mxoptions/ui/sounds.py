@@ -19,6 +19,11 @@ from PySide6.QtCore import QObject, QUrl
 
 from .. import paths
 
+# Short clicks need no video acceleration. Qt's FFmpeg backend probes the hardware decoders and
+# encoders anyway, and some VA-API drivers (NVIDIA's on X11) crash the program while being probed.
+for _variable in ("QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "QT_FFMPEG_ENCODING_HW_DEVICE_TYPES"):
+    os.environ.setdefault(_variable, "")
+
 try:
     from PySide6.QtMultimedia import QSoundEffect
 except ImportError:  # then a command-line player has to do

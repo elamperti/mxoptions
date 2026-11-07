@@ -1,91 +1,86 @@
-# MX Options: build, test, install.
+# MX Options: a per-user installation in its own Python virtual environment.
 #
-#   make                  compile everything
+#   make venv             create the virtual environment and install the dependencies into it
 #   make test             run the unit tests
-#   make install-user     install for the current user under ~/.local (no root needed)
-#   make enable           start the service now and at every login
-#   sudo make install     install for every user under /usr/local
+#   make run              start the program from this source tree
+#   make install          install for the current user under ~/.local (no root needed)
+#   make enable           start the service now and with every graphical session
+#   make i3               let the service start with an i3 session (see README, "i3")
 #   sudo make udev        install the device access rules (once; see README, "Permissions")
-#   make uninstall-user   remove the per-user installation
-#   sudo make uninstall   remove the system-wide installation
+#   make uninstall        remove the installation (the virtual environment included)
+#
+# Nothing is installed into the system's Python: PySide6 (with its own Qt), evdev and numpy live
+# in $(VENV). After the system's Python moves to a new minor version, run "make venv-reset".
 
-PREFIX ?= /usr/local
-DESTDIR ?=
-PYTHON ?= python3
+# The interpreter the virtual environment is made from. Named by its full path so that a pyenv
+# shim earlier on PATH does not pick an older Python.
+SYSTEM_PYTHON ?= /usr/bin/python3
 
+PREFIX ?= $(HOME)/.local
 bindir = $(PREFIX)/bin
 libdir = $(PREFIX)/lib/mxoptions
-datadir = $(PREFIX)/share
-docdir = $(datadir)/doc/mxoptions
-licensedir = $(datadir)/licenses/mxoptions
-unitdir = $(PREFIX)/lib/systemd/user
+datadir = $(or $(XDG_DATA_HOME),$(PREFIX)/share)
+unitdir = $(or $(XDG_CONFIG_HOME),$(HOME)/.config)/systemd/user
 udevdir = /etc/udev/rules.d
-# empty: leave the udev rules out (a per-user installation cannot place them)
-UDEV = yes
 
-user_prefix = $(HOME)/.local
-user_unitdir = $(or $(XDG_CONFIG_HOME),$(HOME)/.config)/systemd/user
-python_path = $(shell command -v $(PYTHON))
-substitute = sed -e 's|@BINDIR@|$(bindir)|g' -e 's|@LIBDIR@|$(libdir)|g' -e 's|@DOCDIR@|$(docdir)|g' \
-	-e 's|@PYTHON@|$(python_path)|g'
+VENV ?= $(libdir)/venv
+PYTHON = $(VENV)/bin/python
+DEPENDENCIES = "PySide6>=6.6" "evdev>=1.6" numpy
 
-.PHONY: all build test check run screenshots install install-user uninstall uninstall-user enable disable udev clean
+substitute = sed -e 's|@BINDIR@|$(bindir)|g' -e 's|@LIBDIR@|$(libdir)|g' -e 's|@PYTHON@|$(PYTHON)|g'
+
+.PHONY: all venv venv-reset build test check run screenshots install uninstall enable disable i3 udev clean
 
 all: build
 
-build:
+$(PYTHON):
+	$(SYSTEM_PYTHON) -m venv "$(VENV)"
+	$(PYTHON) -m pip install --quiet --upgrade pip
+	$(PYTHON) -m pip install --quiet $(DEPENDENCIES)
+
+venv: $(PYTHON)
+
+venv-reset:
+	rm -rf "$(VENV)"
+	$(MAKE) venv
+
+build: $(PYTHON)
 	$(PYTHON) -m compileall -q mxoptions
 
-test:
-	$(PYTHON) -m unittest discover -s tests
+test: $(PYTHON)
+	QT_QPA_PLATFORM=offscreen $(PYTHON) -m unittest discover -s tests
 
 check: build test
 
-run:
+run: $(PYTHON)
 	$(PYTHON) main.py
 
-screenshots:
+screenshots: $(PYTHON)
 	$(PYTHON) tools/screenshots.py docs/screenshots
 
 install: build
-	install -d "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(unitdir)"
-	rm -rf "$(DESTDIR)$(libdir)/mxoptions"
-	cp -r mxoptions "$(DESTDIR)$(libdir)/mxoptions"
-	find "$(DESTDIR)$(libdir)/mxoptions" -name __pycache__ -prune -exec rm -rf {} +
-	$(PYTHON) -m compileall -q -d "$(libdir)/mxoptions" "$(DESTDIR)$(libdir)/mxoptions"
-	$(substitute) data/mxoptions.in > "$(DESTDIR)$(bindir)/mxoptions"
-	chmod 755 "$(DESTDIR)$(bindir)/mxoptions"
-	$(substitute) data/mxoptions.service.in > "$(DESTDIR)$(unitdir)/mxoptions.service"
-	install -d "$(DESTDIR)$(datadir)/applications"
-	sed -e 's|^Exec=mxoptions|Exec=$(bindir)/mxoptions|' data/mxoptions.desktop > "$(DESTDIR)$(datadir)/applications/mxoptions.desktop"
-	install -Dm644 mxoptions/assets/icon.svg "$(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg"
-	install -Dm644 README.md "$(DESTDIR)$(docdir)/README.md"
-	install -Dm644 docs/API.md "$(DESTDIR)$(docdir)/API.md"
-	install -Dm644 LICENSE "$(DESTDIR)$(licensedir)/LICENSE"
-ifeq ($(UDEV),yes)
-	install -Dm644 data/70-mxoptions.rules "$(DESTDIR)$(udevdir)/70-mxoptions.rules"
-endif
-
-uninstall:
-	rm -rf "$(DESTDIR)$(libdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(licensedir)"
-	rm -f "$(DESTDIR)$(bindir)/mxoptions" "$(DESTDIR)$(unitdir)/mxoptions.service" \
-		"$(DESTDIR)$(datadir)/applications/mxoptions.desktop" \
-		"$(DESTDIR)$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg"
-ifeq ($(UDEV),yes)
-	rm -f "$(DESTDIR)$(udevdir)/70-mxoptions.rules"
-endif
-
-install-user:
-	$(MAKE) install PREFIX="$(user_prefix)" unitdir="$(user_unitdir)" UDEV=
+	install -d "$(libdir)" "$(bindir)" "$(unitdir)" "$(datadir)/applications"
+	rm -rf "$(libdir)/mxoptions"
+	cp -r mxoptions "$(libdir)/mxoptions"
+	find "$(libdir)/mxoptions" -name __pycache__ -prune -exec rm -rf {} +
+	$(PYTHON) -m compileall -q "$(libdir)/mxoptions"
+	$(substitute) data/mxoptions.in > "$(bindir)/mxoptions"
+	chmod 755 "$(bindir)/mxoptions"
+	$(substitute) data/mxoptions.service.in > "$(unitdir)/mxoptions.service"
+	sed -e 's|^Exec=mxoptions|Exec=$(bindir)/mxoptions|' data/mxoptions.desktop > "$(datadir)/applications/mxoptions.desktop"
+	install -Dm644 mxoptions/assets/icon.svg "$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg"
 	-systemctl --user daemon-reload
 	@echo
-	@echo "Installed under $(user_prefix). Next:"
-	@echo "  make enable       start it now and at every login"
+	@echo "Installed under $(PREFIX). Next:"
+	@echo "  make enable       start it now and with every graphical session"
+	@echo "  make i3           on i3, which does not start graphical-session.target by itself"
 	@echo "  sudo make udev    only if the program cannot reach the mouse (see README, Permissions)"
 
-uninstall-user: disable
-	$(MAKE) uninstall PREFIX="$(user_prefix)" unitdir="$(user_unitdir)" UDEV=
-	rm -f "$(or $(XDG_DATA_HOME),$(HOME)/.local/share)"/icons/hicolor/scalable/status/mxoptions-tray-*.svg  # written by the program for its tray icon
+uninstall: disable
+	rm -rf "$(libdir)"
+	rm -f "$(bindir)/mxoptions" "$(unitdir)/mxoptions.service" "$(unitdir)/i3-session.target" \
+		"$(datadir)/applications/mxoptions.desktop" "$(datadir)/icons/hicolor/scalable/apps/mxoptions.svg" \
+		"$(datadir)"/icons/hicolor/scalable/status/mxoptions-tray-*.svg  # the last ones are drawn by the program for its tray icon
 	-systemctl --user daemon-reload
 
 enable:
@@ -95,8 +90,15 @@ enable:
 disable:
 	-systemctl --user disable --now mxoptions.service
 
+i3:
+	install -Dm644 data/i3-session.target "$(unitdir)/i3-session.target"
+	systemctl --user daemon-reload
+	@echo
+	@echo "Add this line to your i3 config, then reload i3 (or log in again):"
+	@echo "  exec --no-startup-id systemctl --user start i3-session.target"
+
 udev:
-	install -Dm644 data/70-mxoptions.rules "$(DESTDIR)$(udevdir)/70-mxoptions.rules"
+	install -Dm644 data/70-mxoptions.rules "$(udevdir)/70-mxoptions.rules"
 	-udevadm control --reload-rules
 	-udevadm trigger --subsystem-match=hidraw
 	-udevadm trigger --sysname-match=uinput

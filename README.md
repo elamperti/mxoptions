@@ -57,19 +57,14 @@ MX Masters before the 4 (3S, 3, 2S and the first) are drawn with the 3D model, a
 with a plain drawing of its own buttons. None of these was tried by the author; a user reported
 gestures working on a Signature M650 L.
 
-- Python 3.12 or newer
-- PySide6 (Qt 6.6 or newer), with Qt Declarative and Qt Multimedia
-- python-evdev
-- layer-shell-qt (its QML module draws the ring over other windows on Wayland; a small library, not a
-  desktop: it is wanted on sway and Hyprland as much as on KDE Plasma)
-- numpy, optional: the glossy 3D model and soft shadows
+- Python 3.12 or newer (the system's `/usr/bin/python3`)
+- for the program itself, installed by `make venv` into a virtual environment of its own, so the
+  system's Python and Qt are left alone: PySide6 (which brings its own Qt 6), python-evdev and numpy
 - for the *Text* action, optional: xclip or xsel on X11, wl-clipboard on Wayland (Plasma needs neither).
   Without one, text is typed key by key with a US layout.
 
-Use your distribution's PySide6. One installed with pip brings its own Qt, which cannot see the
-system's layer-shell module, so the Actions Ring would not appear.
-
-On Arch-based systems: `pyside6 python-evdev qt6-declarative qt6-multimedia layer-shell-qt python-numpy`.
+On X11 that is all. On Wayland the Qt that PySide6 brings cannot load the system's layer-shell
+module, so set `MXOPTIONS_RING=xwayland` (or `window`) for the Actions Ring to appear.
 
 ### Desktops
 
@@ -102,30 +97,24 @@ ordinary window, which takes the focus while it is open.
 
 ## Installing
 
-### Any distribution, for your user only (no root)
-
-Install the requirements above, then:
+For your user only, under `~/.local`, with no root and nothing installed into the system's Python:
 
 ```sh
-git clone https://github.com/nictonus/mxoptions.git && cd mxoptions
-make install-user     # into ~/.local
-make enable           # start now and at every login
+make install          # creates ~/.local/lib/mxoptions/venv on the first run (about 750 MB, mostly Qt)
+make enable           # start now and with every graphical session
+make i3               # on i3: see below
 ```
+
+`make install` again after pulling changes; the virtual environment is kept. When the system's
+Python moves to a new minor version (3.14 to 3.15, say), the environment points at an interpreter
+that is gone: `make venv-reset install` builds it again.
 
 If the app then reports that it cannot find or reach the mouse, see [Permissions](#permissions).
 
-### Any distribution, for all users
+From the source tree, without installing (the virtual environment is still needed):
 
 ```sh
-sudo make install     # into /usr/local, device access rules included
-sudo make udev        # apply those rules now, without replugging the receiver
-systemctl --user enable --now mxoptions.service
-```
-
-### Without installing
-
-```sh
-python3 main.py
+make run
 ```
 
 ## Running as a service
@@ -145,15 +134,19 @@ systemctl --user disable --now mxoptions
 stops the service until the next login; while it is stopped the mouse behaves as it does without
 any software.
 
+### i3
+
 The service starts with systemd's `graphical-session.target`. KDE Plasma and GNOME reach it by
-themselves. A compositor started on its own (sway, Hyprland, a window manager from `.xinitrc`)
-does not, unless you have set that up; there, start the program from the compositor's own
-configuration instead:
+themselves; i3 does not. `make i3` installs a small `i3-session.target` that pulls it in, after which
+one line in the i3 config starts the service (and anything else tied to the graphical session):
 
 ```
-exec mxoptions --background          # sway, i3
-exec-once = mxoptions --background   # Hyprland
+exec --no-startup-id systemctl --user start i3-session.target
 ```
+
+"Start at login" in the app keeps working as on other desktops. The ready actions for windows and
+desktops send the key combinations of a generic X11 desktop, which i3 does not bind by default:
+give those buttons an i3 command instead, such as `i3-msg workspace next`.
 
 Without a system tray the program has nowhere to sit behind its window: started in the background
 it still runs, and starting it again from the menu opens the window.
@@ -168,7 +161,7 @@ grants both to whoever is logged in at the computer:
 sudo make udev
 ```
 
-The Arch package and `sudo make install` already include the rules. Many systems have equivalent
+Many systems have equivalent
 rules from Solaar, Steam or KDE Connect, in which case nothing more is needed.
 
 ## Other mouse software
@@ -241,8 +234,8 @@ then, and for other mice, it draws its own 3D model.
 ## Development
 
 ```sh
-make test                                  # unit tests for the logic (no mouse needed)
-python3 tools/screenshots.py /tmp/shots    # render every page without a mouse or a screen
+make test                                                        # unit tests for the logic (no mouse needed)
+~/.local/lib/mxoptions/venv/bin/python tools/screenshots.py /tmp/shots   # render every page without a mouse or a screen
 ```
 
 | | |
@@ -255,14 +248,13 @@ python3 tools/screenshots.py /tmp/shots    # render every page without a mouse o
 | `mxoptions/rumble.py` | the virtual gamepad that games vibrate |
 | `mxoptions/clipboard.py` | text on the clipboard, for the *Text* action |
 | `mxoptions/ui/` | the settings window, the ring overlay, sounds |
-| `data/` | desktop entry, systemd unit, udev rules |
+| `data/` | desktop entry, launchers, systemd units, udev rules |
 
 ## Uninstalling
 
 ```sh
-make uninstall-user          # or: sudo make uninstall, or: sudo pacman -R mxoptions
+make uninstall               # the program, its virtual environment, the units and the menu entry
 rm -r ~/.config/mxoptions ~/.local/share/mxoptions ~/.cache/mxoptions    # settings and downloads
-rm ~/.local/share/icons/hicolor/scalable/status/mxoptions-tray-*.svg     # the tray icon (after a system-wide install)
 ```
 
 ## Licence

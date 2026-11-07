@@ -1,4 +1,4 @@
 #!/bin/sh
-# Launcher of an installed copy of MX Options.
+# Launcher of an installed copy of MX Options: its own virtual environment's Python, its own copy of the code.
 export MXOPTIONS_LAUNCHER="@BINDIR@/mxoptions"
 PYTHONPATH="@LIBDIR@${PYTHONPATH:+:$PYTHONPATH}" exec @PYTHON@ -m mxoptions "$@"

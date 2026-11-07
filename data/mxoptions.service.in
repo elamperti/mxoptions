@@ -1,6 +1,5 @@
 [Unit]
 Description=MX Options: buttons, gestures, wheel and haptics of Logitech MX mice
-Documentation=file://@DOCDIR@/README.md
 PartOf=graphical-session.target
 After=graphical-session.target
 

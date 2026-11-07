@@ -14,7 +14,7 @@ from PySide6.QtDBus import QDBusConnection, QDBusMessage
 from PySide6.QtGui import QGuiApplication, QIcon, QPainter, QPalette, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
-from .. import desktop
+from .. import desktop, environment
 
 STYLES = ("outline", "solid", "master", "battery", "logo")  # "logo": the application's own colourful icon
 DEFAULT_STYLE = "outline"
@@ -150,7 +150,11 @@ def icon(style, state, charging):
     if key is None:
         return QIcon(desktop.ICON_PATH)
     name = f"{PREFIX}{key}-symbolic"
-    return QIcon.fromTheme(name) if QIcon.hasThemeIcon(name) else _drawn(key)
+    # Only Plasma recolours the drawings to suit its panel; elsewhere (i3bar, any XEmbed tray) their
+    # dark ink would vanish on a dark bar, so they are drawn here in the program's text colour.
+    if environment.current() == environment.KDE and QIcon.hasThemeIcon(name):
+        return QIcon.fromTheme(name)
+    return _drawn(key)
 
 
 def preview(style, ink, size=26):
